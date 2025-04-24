@@ -1,109 +1,280 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Image Resizer</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Math Quiz Game</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      background: #f0f0f0;
+      font-family: 'Poppins', sans-serif;
       margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #42a5f5, #ab47bc);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       padding: 20px;
+      height: 100vh;
+      justify-content: center;
       text-align: center;
     }
 
-    .container {
-      max-width: 400px;
-      margin: auto;
-      background: #fff;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-
-    input[type="file"],
-    input[type="number"],
-    button {
+    .quiz-container {
       width: 100%;
-      padding: 12px;
-      margin: 10px 0;
-      border-radius: 8px;
-      border: 1px solid #ccc;
+      max-width: 400px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 20px;
+      border-radius: 20px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
     }
 
-    button {
-      background: #007bff;
-      color: white;
+    h1 {
+      margin-bottom: 10px;
+      font-size: 2em;
       font-weight: bold;
+      color: #fff;
+    }
+
+    .score-box, .timer {
+      margin: 10px 0;
+    }
+
+    .question {
+      font-size: 1.5em;
+      margin: 20px 0;
+    }
+
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .options button {
+      padding: 10px;
       border: none;
+      border-radius: 10px;
+      background: #fbc02d;
+      color: black;
+      font-size: 1.1em;
       cursor: pointer;
+      transition: background 0.3s;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     }
 
-    button:hover {
-      background: #0056b3;
+    .options button:hover {
+      background: #f57f17;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     }
 
-    canvas {
+    .status {
+      margin-top: 15px;
+      font-size: 1.2em;
+    }
+
+    .restart-btn {
+      background: #ff4081;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1em;
+      margin-top: 20px;
       display: none;
     }
 
-    @media (max-width: 500px) {
-      body {
-        padding: 10px;
+    .claim-btn {
+      background: #1e88e5;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1em;
+      margin-top: 15px;
+      display: none;
+      cursor: pointer;
+    }
+
+    .fa {
+      margin-right: 10px;
+    }
+
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 1.6em;
+      }
+
+      .question {
+        font-size: 1.3em;
+      }
+
+      .options button {
+        font-size: 1em;
       }
     }
   </style>
 </head>
 <body>
-
-  <div class="container">
-    <h2>Image Resizer</h2>
-    <input type="file" id="upload" accept="image/*">
-    <input type="number" id="width" placeholder="Width (px)">
-    <input type="number" id="height" placeholder="Height (px)">
-    <button onclick="resizeImage()">Resize & Download</button>
-    <canvas id="canvas"></canvas>
+  <div class="quiz-container">
+    <h1>🧮 Math Quiz</h1>
+    <div class="score-box">
+      <strong>Score:</strong> <span id="score">0</span> | <strong>High Score:</strong> <span id="highscore">0</span>
+    </div>
+    <div class="timer">
+      <i class="fas fa-clock"></i> Time Left: <span id="timer">15</span>s
+    </div>
+    <div class="question" id="question">Loading...</div>
+    <div class="options" id="options"></div>
+    <div class="status" id="status"></div>
+    <button class="restart-btn" id="restartBtn"><i class="fas fa-redo-alt"></i> Restart Quiz</button>
+    <button class="claim-btn" id="claimBtn"><i class="fas fa-gift"></i> Claim 10 Credits</button>
   </div>
 
+  <!-- Sound Effects -->
+  <audio id="correctSound" preload="auto">
+    <source src="https://www.soundjay.com/button/beep-07.wav" type="audio/wav">
+  </audio>
+  <audio id="wrongSound" preload="auto">
+    <source src="https://www.soundjay.com/button/beep-10.wav" type="audio/wav">
+  </audio>
+
   <script>
-    let image = new Image();
-    let canvas = document.getElementById("canvas");
-    let ctx = canvas.getContext("2d");
+    const questionEl = document.getElementById("question");
+    const optionsEl = document.getElementById("options");
+    const timerEl = document.getElementById("timer");
+    const scoreEl = document.getElementById("score");
+    const highScoreEl = document.getElementById("highscore");
+    const statusEl = document.getElementById("status");
+    const restartBtn = document.getElementById("restartBtn");
+    const claimBtn = document.getElementById("claimBtn");
+    const correctSound = document.getElementById("correctSound");
+    const wrongSound = document.getElementById("wrongSound");
 
-    document.getElementById("upload").addEventListener("change", function(e) {
-      let reader = new FileReader();
-      reader.onload = function(event) {
-        image.src = event.target.result;
-      };
-      reader.readAsDataURL(e.target.files[0]);
-    });
+    let score = 0;
+    let highScore = localStorage.getItem("mathHighScore") || 0;
+    let currentAnswer = null;
+    let timer;
+    let timeLeft = 15;
+    let wrongAttempts = 0;
+    let credits = 0;
 
-    function resizeImage() {
-      const width = parseInt(document.getElementById("width").value);
-      const height = parseInt(document.getElementById("height").value);
+    highScoreEl.innerText = highScore;
 
-      if (!width || !height || isNaN(width) || isNaN(height)) {
-        alert("Please enter valid width and height");
-        return;
+    function generateQuestion() {
+      const a = Math.floor(Math.random() * 10) + 1;
+      const b = Math.floor(Math.random() * 10) + 1;
+      const operators = ['+', '-', '*'];
+      const op = operators[Math.floor(Math.random() * operators.length)];
+      let question, answer;
+
+      switch(op) {
+        case '+': answer = a + b; question = `${a} + ${b}`; break;
+        case '-': answer = a - b; question = `${a} - ${b}`; break;
+        case '*': answer = a * b; question = `${a} × ${b}`; break;
       }
 
-      image.onload = () => {
-        canvas.width = width;
-        canvas.height = height;
-        ctx.drawImage(image, 0, 0, width, height);
+      currentAnswer = answer;
+      questionEl.innerText = question;
+      generateOptions(answer);
+      resetTimer();
+    }
 
-        let link = document.createElement('a');
-        link.download = 'resized-image.png';
-        link.href = canvas.toDataURL();
-        link.click();
-      };
+    function generateOptions(correct) {
+      optionsEl.innerHTML = "";
+      let options = [correct];
+      while (options.length < 4) {
+        let wrong = correct + Math.floor(Math.random() * 10 - 5);
+        if (!options.includes(wrong)) options.push(wrong);
+      }
 
-      if (image.complete) {
-        image.onload(); // trigger resize if already loaded
+      options = options.sort(() => Math.random() - 0.5);
+      options.forEach(option => {
+        const btn = document.createElement("button");
+        btn.innerHTML = `<i class="fas fa-check-circle"></i> ${option}`;
+        btn.onclick = () => checkAnswer(option);
+        optionsEl.appendChild(btn);
+      });
+    }
+
+    function checkAnswer(selected) {
+      clearInterval(timer);
+      if (selected === currentAnswer) {
+        score++;
+        correctSound.play(); // Play correct sound
+        statusEl.innerText = "✅ Correct!";
+        wrongAttempts = 0;  // Reset wrong attempts on correct answer
+      } else {
+        wrongAttempts++;
+        wrongSound.play(); // Play wrong sound
+        statusEl.innerText = "❌ Wrong!";
+      }
+
+      scoreEl.innerText = score;
+
+      // If 3 wrong attempts, show the claim button
+      if (wrongAttempts >= 3) {
+        claimBtn.style.display = "inline-block";
+      } else {
+        setTimeout(() => {
+          statusEl.innerText = "";
+          generateQuestion();
+        }, 1000);
       }
     }
-  </script>
 
+    function resetTimer() {
+      clearInterval(timer);
+      timeLeft = 15;
+      timerEl.innerText = timeLeft;
+      timer = setInterval(() => {
+        timeLeft--;
+        timerEl.innerText = timeLeft;
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          statusEl.innerText = "⏱️ Time's Up!";
+          wrongSound.play();
+          setTimeout(() => {
+            gameOver();
+          }, 1000);
+        }
+      }, 1000);
+    }
+
+    function gameOver() {
+      if (score > highScore) {
+        localStorage.setItem("mathHighScore", score);
+        highScore = score;
+        highScoreEl.innerText = score;
+      }
+      statusEl.innerText = "🎮 Game Over! Final Score: " + score;
+      restartBtn.style.display = "inline-block";
+    }
+
+    function claimCredits() {
+      credits += 10;
+      claimBtn.style.display = "none";
+      wrongAttempts = 0;  // Reset wrong attempts after claiming credits
+      generateQuestion();  // Restart the game after claiming credits
+    }
+
+    restartBtn.onclick = () => {
+      score = 0;
+      scoreEl.innerText = score;
+      statusEl.innerText = "";
+      restartBtn.style.display = "none";
+      generateQuestion();
+    };
+
+    claimBtn.onclick = claimCredits;
+
+    // Start the first question
+    generateQuestion();
+  </script>
 </body>
 </html>
